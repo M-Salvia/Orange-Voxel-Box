@@ -39,8 +39,8 @@ const getEnv = (key: string): string => {
   }
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+const supabaseUrl = getEnv('https://yhtmfggneyufebqzmahx.supabase.co');
+const supabaseAnonKey = getEnv('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlodG1mZ2duZXl1ZmVicXptYWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDgyMDQsImV4cCI6MjA4NjA4NDIwNH0.IMC4DkjI_pimHjbuUk2Vera9e9ttWVZEnvJib4cCHyY');
 
 /**
  * 当配置缺失时返回的模拟客户端，提供明确的错误反馈。
