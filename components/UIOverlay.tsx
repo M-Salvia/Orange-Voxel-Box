@@ -54,7 +54,7 @@ const T = {
         quit: "退出",
         collect: "领取",
         skip: "跳过",
-        login: "登录保存",
+        login: "登录",
         logout: "退出登录",
         hello: "你好，"
     },
@@ -77,7 +77,7 @@ const T = {
         quit: "Quit",
         collect: "Collect",
         skip: "Skip",
-        login: "Login to Sync",
+        login: "Login",
         logout: "Logout",
         hello: "Hi, "
     }
@@ -107,53 +107,120 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
     <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none font-sans">
       
       {!(isTiming || isCollecting) && (
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-start animate-in fade-in duration-500">
-          <div className="pointer-events-auto flex flex-col gap-2">
-              <DropdownMenu icon={<FolderOpen size={20} />} label={dict.buildScheme} color="indigo">
-                  <DropdownItem onClick={onOrangeRebuild} icon={<Citrus size={16}/>} label={dict.reset} highlight />
-                  <div className="h-px bg-slate-100 my-1" />
-                  <DropdownItem onClick={onPromptCreate} icon={<Wand2 size={16}/>} label={dict.aiCreator} />
-                  <DropdownItem onClick={onImportJson} icon={<Box size={16}/>} label={dict.importJson} />
-              </DropdownMenu>
-
-              <div className="flex items-center gap-3 px-4 py-2 bg-white/90 backdrop-blur-sm shadow-sm rounded-xl border border-slate-200 text-slate-500 font-bold w-fit mt-2">
-                  <div className={`bg-orange-100 text-orange-600 p-1.5 rounded-lg`}>
-                      <Citrus size={16} strokeWidth={3} />
+        <>
+          {/* Top Bar */}
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start animate-in fade-in duration-500">
+            {/* Left Section - Controls & Logout */}
+            <div className="pointer-events-auto flex flex-col gap-2 items-start">
+                {/* 1. Logout Button (Orange background, white text, matching size of Login) */}
+                {user && (
+                  <div className="w-28 h-[44px] animate-in slide-in-from-top-2 duration-300">
+                    <TactileButton 
+                      onClick={onAuthClick}
+                      color="orange"
+                      icon={<LogOut size={18}/>}
+                      label={dict.logout}
+                      fullWidth
+                    />
                   </div>
-                  <div className="flex flex-col leading-none">
-                      <span className="text-[10px] uppercase tracking-wider opacity-60">{dict.harvest}</span>
-                      <span className="text-lg text-slate-800 font-extrabold font-mono">{voxelCount}</span>
-                  </div>
-              </div>
-          </div>
+                )}
 
-          <div className="pointer-events-auto flex gap-2 items-start">
-              <div className="flex flex-col items-end gap-1.5">
-                  {user && (
-                    <div className="px-3 py-1 bg-orange-50 rounded-lg border border-orange-100 text-[10px] font-black text-orange-500 uppercase tracking-widest shadow-sm animate-in slide-in-from-top-1">
-                       {dict.hello}{displayName}
+                {/* 2. Build Schemes Dropdown */}
+                <DropdownMenu icon={<FolderOpen size={20} />} label={dict.buildScheme} color="indigo">
+                    <DropdownItem onClick={onOrangeRebuild} icon={<Citrus size={16}/>} label={dict.reset} highlight />
+                    <div className="h-px bg-slate-100 my-1" />
+                    <DropdownItem onClick={onPromptCreate} icon={<Wand2 size={16}/>} label={dict.aiCreator} />
+                    <DropdownItem onClick={onImportJson} icon={<Box size={16}/>} label={dict.importJson} />
+                </DropdownMenu>
+
+                {/* 3. Harvest Counter */}
+                <div className="flex items-center gap-3 px-4 py-2 bg-white/90 backdrop-blur-sm shadow-sm rounded-xl border border-slate-200 text-slate-500 font-bold w-fit">
+                    <div className={`bg-orange-100 text-orange-600 p-1.5 rounded-lg`}>
+                        <Citrus size={16} strokeWidth={3} />
                     </div>
-                  )}
-                  <button 
-                    onClick={onAuthClick}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-b-[4px] active:border-b-0 active:translate-y-[4px] shadow-lg ${user ? 'bg-white text-slate-600 border-slate-200' : 'bg-orange-500 text-white border-orange-700'}`}
-                  >
-                    {user ? <LogOut size={18}/> : <User size={18}/>}
-                    <span>{user ? dict.logout : dict.login}</span>
-                  </button>
-              </div>
+                    <div className="flex flex-col leading-none">
+                        <span className="text-[10px] uppercase tracking-wider opacity-60">{dict.harvest}</span>
+                        <span className="text-lg text-slate-800 font-extrabold font-mono">{voxelCount}</span>
+                    </div>
+                </div>
+            </div>
 
-              <TactileButton 
-                onClick={() => onLanguageChange(language === 'zh' ? 'en' : 'zh')} 
-                color="slate" icon={<Languages size={18} strokeWidth={2.5} />} label={language === 'zh' ? 'EN' : 'ZH'} compact 
-              />
-              <TactileButton onClick={onToggleInfo} color={isInfoVisible ? 'indigo' : 'slate'} icon={<Info size={18} strokeWidth={2.5} />} label={dict.info} compact />
-              <TactileButton onClick={onToggleRotation} color={isAutoRotate ? 'sky' : 'slate'} icon={isAutoRotate ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />} label={dict.rotate} compact />
-              <TactileButton onClick={onShowJson} color="slate" icon={<Code2 size={18} strokeWidth={2.5} />} label={dict.export} />
+            {/* Right Section - Specified Layout: [Stretchy Greeting] [Square] [Square] [Square] [Wide] */}
+            <div className="pointer-events-auto flex items-center gap-2">
+                {/* 1. Login or User Greeting (Flexible width to accommodate full name) */}
+                <div className="h-[44px]">
+                    {user ? (
+                      <div className="h-full flex items-center justify-center gap-2 px-5 bg-white/90 backdrop-blur-sm rounded-xl border-b-[4px] border-orange-200 text-orange-600 shadow-sm animate-in zoom-in-95 duration-200 whitespace-nowrap">
+                        <User size={16} className="shrink-0" />
+                        <span className="text-[11px] font-black uppercase tracking-tighter">
+                          {dict.hello}{displayName}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="w-28 h-full">
+                        <TactileButton 
+                          onClick={onAuthClick}
+                          color="orange"
+                          icon={<User size={18}/>}
+                          label={dict.login}
+                          fullWidth
+                        />
+                      </div>
+                    )}
+                </div>
+
+                {/* 2. Language (Square) */}
+                <div className="w-[44px] h-[44px]">
+                  <TactileButton 
+                    onClick={() => onLanguageChange(language === 'zh' ? 'en' : 'zh')} 
+                    color="slate" 
+                    icon={<Languages size={18} strokeWidth={2.5} />} 
+                    label="" 
+                    compact
+                    fullWidth
+                  />
+                </div>
+                
+                {/* 3. Info (Square) */}
+                <div className="w-[44px] h-[44px]">
+                  <TactileButton 
+                    onClick={onToggleInfo} 
+                    color={isInfoVisible ? 'indigo' : 'slate'} 
+                    icon={<Info size={18} strokeWidth={2.5} />} 
+                    label="" 
+                    compact
+                    fullWidth
+                  />
+                </div>
+
+                {/* 4. Rotate (Square) */}
+                <div className="w-[44px] h-[44px]">
+                  <TactileButton 
+                    onClick={onToggleRotation} 
+                    color={isAutoRotate ? 'sky' : 'slate'} 
+                    icon={isAutoRotate ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />} 
+                    label="" 
+                    compact
+                    fullWidth
+                  />
+                </div>
+
+                {/* 5. Export (Wide - matching width of Login) */}
+                <div className="w-28 h-[44px]">
+                  <TactileButton 
+                    onClick={onShowJson} 
+                    color="slate" 
+                    icon={<Code2 size={18} strokeWidth={2.5} />} 
+                    label={dict.export} 
+                    fullWidth 
+                  />
+                </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
+      {/* Generating overlay */}
       {isGenerating && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
               <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
@@ -163,6 +230,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
           </div>
       )}
 
+      {/* Timer overlay */}
       {isTiming && (
         <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none animate-in fade-in duration-1000">
            <span className="text-7xl sm:text-8xl font-black text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.1)] font-mono tracking-tighter">
@@ -171,6 +239,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
         </div>
       )}
 
+      {/* Main Action Area */}
       <div className="absolute bottom-12 left-0 w-full flex justify-center items-end pointer-events-none">
         <div className="pointer-events-auto">
             {isStable && (
@@ -207,16 +276,48 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   );
 };
 
-// Sub-components as defined previously...
+// Sub-components
 const BigActionButton: React.FC<{onClick: () => void, icon: React.ReactNode, label: string, color: 'rose' | 'emerald'}> = ({ onClick, icon, label, color }) => {
     const bgColor = color === 'rose' ? 'bg-[#ff4d6d] hover:bg-[#ff1a44] border-[#c9183b] shadow-[0_12px_24px_-5px_rgba(255,77,109,0.3)]' : 'bg-[#10b981] hover:bg-[#059669] border-[#047857] shadow-[0_12px_24px_-5px_rgba(16,185,129,0.3)]';
     return <button onClick={onClick} className={`group relative flex flex-col items-center justify-center w-32 h-32 rounded-[36px] ${bgColor} text-white border-b-[8px] active:border-b-0 active:translate-y-[8px] transition-all duration-150 pointer-events-auto`} ><div className="mb-2 shrink-0 group-hover:scale-110 transition-transform">{icon}</div><div className="text-[10px] font-black tracking-[0.2em] uppercase">{label}</div></button>
 }
-interface TactileButtonProps { onClick: () => void; disabled?: boolean; icon: React.ReactNode; label: string; color: 'slate' | 'rose' | 'sky' | 'emerald' | 'amber' | 'indigo'; compact?: boolean; }
-const TactileButton: React.FC<TactileButtonProps> = ({ onClick, disabled, icon, label, color, compact }) => {
-  const colorStyles = { slate: 'bg-slate-200 text-slate-600 border-slate-400 hover:bg-slate-300', rose: 'bg-rose-500 text-white border-rose-700 hover:bg-rose-600', sky: 'bg-sky-500 text-white border-sky-700 hover:bg-sky-600', emerald: 'bg-emerald-500 text-white border-emerald-700 hover:bg-emerald-600', amber: 'bg-amber-400 text-amber-900 border-amber-600 hover:bg-amber-500', indigo: 'bg-indigo-500 text-white border-indigo-700 hover:bg-indigo-600' };
-  return <button onClick={onClick} disabled={disabled} className={`group relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all duration-100 border-b-[4px] active:border-b-0 active:translate-y-[4px] ${compact ? 'p-2.5' : 'px-4 py-3'} ${disabled ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed shadow-none' : `${colorStyles[color]} shadow-lg`} `} > {icon} {!compact && <span>{label}</span>} </button>;
+
+interface TactileButtonProps { 
+  onClick: () => void; 
+  disabled?: boolean; 
+  icon: React.ReactNode; 
+  label: string; 
+  color: 'slate' | 'rose' | 'sky' | 'emerald' | 'amber' | 'indigo' | 'orange'; 
+  compact?: boolean; 
+  fullWidth?: boolean;
+}
+
+const TactileButton: React.FC<TactileButtonProps> = ({ onClick, disabled, icon, label, color, compact, fullWidth }) => {
+  const colorStyles = { 
+    slate: 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200', 
+    rose: 'bg-rose-500 text-white border-rose-700 hover:bg-rose-600', 
+    sky: 'bg-sky-500 text-white border-sky-700 hover:bg-sky-600', 
+    emerald: 'bg-emerald-500 text-white border-emerald-700 hover:bg-emerald-600', 
+    amber: 'bg-amber-400 text-amber-900 border-amber-600 hover:bg-amber-500', 
+    indigo: 'bg-indigo-500 text-white border-indigo-700 hover:bg-indigo-600',
+    orange: 'bg-orange-500 text-white border-orange-700 hover:bg-orange-600'
+  };
+  return (
+    <button 
+      onClick={onClick} 
+      disabled={disabled} 
+      className={`
+        group relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-[11px] transition-all duration-100 border-b-[4px] active:border-b-0 active:translate-y-[4px] h-full
+        ${fullWidth ? 'w-full px-1' : compact ? 'w-full' : 'px-4'} 
+        ${disabled ? 'bg-slate-50 text-slate-200 border-slate-100 cursor-not-allowed shadow-none' : `${colorStyles[color]} shadow-md`} 
+      `}
+    > 
+      {icon && React.cloneElement(icon as React.ReactElement<any>, { size: 16, className: "shrink-0" })} 
+      {!compact && label && <span className="truncate uppercase tracking-tighter">{label}</span>} 
+    </button>
+  );
 };
+
 interface DropdownProps { icon: React.ReactNode; label: string; children: React.ReactNode; color: 'indigo' | 'emerald'; direction?: 'up' | 'down'; big?: boolean; }
 const DropdownMenu: React.FC<DropdownProps> = ({ icon, label, children, color, direction = 'down', big }) => {
     const [isOpen, setIsOpen] = useState(false);
