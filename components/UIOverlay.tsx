@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AppState } from '../types';
-import { Box, Code2, Wand2, Hammer, FolderOpen, ChevronUp, Play, Pause, Info, Loader2, Sparkles, Citrus, X as CloseIcon, Timer, CheckCircle2, Languages } from 'lucide-react';
+import { Box, Code2, Wand2, Hammer, FolderOpen, ChevronUp, Play, Pause, Info, Loader2, Sparkles, Citrus, X as CloseIcon, Timer, CheckCircle2, Languages, User, LogOut } from 'lucide-react';
 
 interface UIOverlayProps {
   voxelCount: number;
@@ -30,6 +30,8 @@ interface UIOverlayProps {
   onCollect?: () => void;
   onTogglePauseTimer?: () => void;
   isTimerPaused?: boolean;
+  user?: any;
+  onAuthClick?: () => void;
 }
 
 const T = {
@@ -51,7 +53,10 @@ const T = {
         pause: "暂停",
         quit: "退出",
         collect: "领取",
-        skip: "跳过"
+        skip: "跳过",
+        login: "登录保存",
+        logout: "退出登录",
+        hello: "你好，"
     },
     en: {
         buildScheme: "Build Schemes",
@@ -71,19 +76,22 @@ const T = {
         pause: "Pause",
         quit: "Quit",
         collect: "Collect",
-        skip: "Skip"
+        skip: "Skip",
+        login: "Login to Sync",
+        logout: "Logout",
+        hello: "Hi, "
     }
 };
 
 export const UIOverlay: React.FC<UIOverlayProps> = ({
   voxelCount, appState, language, onLanguageChange, currentBaseModel, isAutoRotate, isInfoVisible, isGenerating, timeLeft = 0,
   onDismantle, onOrangeRebuild, onPromptCreate, onShowJson, onImportJson, onToggleRotation, onToggleInfo,
-  onStartTimer, onQuitTimer, onCollect, onTogglePauseTimer, isTimerPaused
+  onStartTimer, onQuitTimer, onCollect, onTogglePauseTimer, isTimerPaused, user, onAuthClick
 }) => {
   const isStable = appState === AppState.STABLE;
-  const isDismantling = appState === AppState.DISMANTLING;
   const isTiming = appState === AppState.TIMING;
   const isCollecting = appState === AppState.COLLECTING;
+  const isDismantling = appState === AppState.DISMANTLING;
   
   const dict = T[language];
 
@@ -92,6 +100,8 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
     const s = seconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
+
+  const displayName = user?.user_metadata?.username || user?.email?.split('@')[0] || '';
 
   return (
     <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none font-sans">
@@ -117,13 +127,25 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
               </div>
           </div>
 
-          <div className="pointer-events-auto flex gap-2">
+          <div className="pointer-events-auto flex gap-2 items-start">
+              <div className="flex flex-col items-end gap-1.5">
+                  {user && (
+                    <div className="px-3 py-1 bg-orange-50 rounded-lg border border-orange-100 text-[10px] font-black text-orange-500 uppercase tracking-widest shadow-sm animate-in slide-in-from-top-1">
+                       {dict.hello}{displayName}
+                    </div>
+                  )}
+                  <button 
+                    onClick={onAuthClick}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-b-[4px] active:border-b-0 active:translate-y-[4px] shadow-lg ${user ? 'bg-white text-slate-600 border-slate-200' : 'bg-orange-500 text-white border-orange-700'}`}
+                  >
+                    {user ? <LogOut size={18}/> : <User size={18}/>}
+                    <span>{user ? dict.logout : dict.login}</span>
+                  </button>
+              </div>
+
               <TactileButton 
                 onClick={() => onLanguageChange(language === 'zh' ? 'en' : 'zh')} 
-                color="slate" 
-                icon={<Languages size={18} strokeWidth={2.5} />} 
-                label={language === 'zh' ? 'EN' : 'ZH'} 
-                compact 
+                color="slate" icon={<Languages size={18} strokeWidth={2.5} />} label={language === 'zh' ? 'EN' : 'ZH'} compact 
               />
               <TactileButton onClick={onToggleInfo} color={isInfoVisible ? 'indigo' : 'slate'} icon={<Info size={18} strokeWidth={2.5} />} label={dict.info} compact />
               <TactileButton onClick={onToggleRotation} color={isAutoRotate ? 'sky' : 'slate'} icon={isAutoRotate ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />} label={dict.rotate} compact />
@@ -168,35 +190,15 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
 
             {isTiming && (
               <div className="flex items-center justify-center gap-16 animate-in slide-in-from-bottom-6 duration-500">
-                  <BigActionButton 
-                    onClick={onTogglePauseTimer} 
-                    color="emerald" 
-                    icon={isTimerPaused ? <Play size={32} fill="currentColor" /> : <Pause size={32} fill="currentColor" />} 
-                    label={isTimerPaused ? dict.continue : dict.pause} 
-                  />
-                  <BigActionButton 
-                    onClick={onQuitTimer} 
-                    color="rose" 
-                    icon={<CloseIcon size={32} strokeWidth={3} />} 
-                    label={dict.quit} 
-                  />
+                  <BigActionButton onClick={onTogglePauseTimer} color="emerald" icon={isTimerPaused ? <Play size={32} fill="currentColor" /> : <Pause size={32} fill="currentColor" />} label={isTimerPaused ? dict.continue : dict.pause} />
+                  <BigActionButton onClick={onQuitTimer} color="rose" icon={<CloseIcon size={32} strokeWidth={3} />} label={dict.quit} />
               </div>
             )}
 
             {isCollecting && (
               <div className="flex items-center justify-center gap-16 animate-in slide-in-from-bottom-6 duration-700">
-                  <BigActionButton 
-                    onClick={onCollect} 
-                    color="emerald" 
-                    icon={<CheckCircle2 size={32} strokeWidth={3} />} 
-                    label={dict.collect} 
-                  />
-                  <BigActionButton 
-                    onClick={onQuitTimer} 
-                    color="rose" 
-                    icon={<CloseIcon size={32} strokeWidth={3} />} 
-                    label={dict.skip} 
-                  />
+                  <BigActionButton onClick={onCollect} color="emerald" icon={<CheckCircle2 size={32} strokeWidth={3} />} label={dict.collect} />
+                  <BigActionButton onClick={onQuitTimer} color="rose" icon={<CloseIcon size={32} strokeWidth={3} />} label={dict.skip} />
               </div>
             )}
         </div>
@@ -205,33 +207,16 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   );
 };
 
+// Sub-components as defined previously...
 const BigActionButton: React.FC<{onClick: () => void, icon: React.ReactNode, label: string, color: 'rose' | 'emerald'}> = ({ onClick, icon, label, color }) => {
-    const bgColor = color === 'rose' 
-        ? 'bg-[#ff4d6d] hover:bg-[#ff1a44] border-[#c9183b] shadow-[0_12px_24px_-5px_rgba(255,77,109,0.3)]' 
-        : 'bg-[#10b981] hover:bg-[#059669] border-[#047857] shadow-[0_12px_24px_-5px_rgba(16,185,129,0.3)]';
-    return (
-        <button onClick={onClick} className={`group relative flex flex-col items-center justify-center w-32 h-32 rounded-[36px] ${bgColor} text-white border-b-[8px] active:border-b-0 active:translate-y-[8px] transition-all duration-150 pointer-events-auto`} >
-            <div className="mb-2 shrink-0 group-hover:scale-110 transition-transform">{icon}</div>
-            <div className="text-[10px] font-black tracking-[0.2em] uppercase">{label}</div>
-        </button>
-    )
+    const bgColor = color === 'rose' ? 'bg-[#ff4d6d] hover:bg-[#ff1a44] border-[#c9183b] shadow-[0_12px_24px_-5px_rgba(255,77,109,0.3)]' : 'bg-[#10b981] hover:bg-[#059669] border-[#047857] shadow-[0_12px_24px_-5px_rgba(16,185,129,0.3)]';
+    return <button onClick={onClick} className={`group relative flex flex-col items-center justify-center w-32 h-32 rounded-[36px] ${bgColor} text-white border-b-[8px] active:border-b-0 active:translate-y-[8px] transition-all duration-150 pointer-events-auto`} ><div className="mb-2 shrink-0 group-hover:scale-110 transition-transform">{icon}</div><div className="text-[10px] font-black tracking-[0.2em] uppercase">{label}</div></button>
 }
-
 interface TactileButtonProps { onClick: () => void; disabled?: boolean; icon: React.ReactNode; label: string; color: 'slate' | 'rose' | 'sky' | 'emerald' | 'amber' | 'indigo'; compact?: boolean; }
 const TactileButton: React.FC<TactileButtonProps> = ({ onClick, disabled, icon, label, color, compact }) => {
-  const colorStyles = {
-    slate:   'bg-slate-200 text-slate-600 border-slate-400 hover:bg-slate-300',
-    rose:    'bg-rose-500 text-white border-rose-700 hover:bg-rose-600',
-    sky:     'bg-sky-500 text-white border-sky-700 hover:bg-sky-600',
-    emerald: 'bg-emerald-500 text-white border-emerald-700 hover:bg-emerald-600',
-    amber:   'bg-amber-400 text-amber-900 border-amber-600 hover:bg-amber-500',
-    indigo:  'bg-indigo-500 text-white border-indigo-700 hover:bg-indigo-600',
-  };
-  return (
-    <button onClick={onClick} disabled={disabled} className={`group relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all duration-100 border-b-[4px] active:border-b-0 active:translate-y-[4px] ${compact ? 'p-2.5' : 'px-4 py-3'} ${disabled ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed shadow-none' : `${colorStyles[color]} shadow-lg`} `} > {icon} {!compact && <span>{label}</span>} </button>
-  );
+  const colorStyles = { slate: 'bg-slate-200 text-slate-600 border-slate-400 hover:bg-slate-300', rose: 'bg-rose-500 text-white border-rose-700 hover:bg-rose-600', sky: 'bg-sky-500 text-white border-sky-700 hover:bg-sky-600', emerald: 'bg-emerald-500 text-white border-emerald-700 hover:bg-emerald-600', amber: 'bg-amber-400 text-amber-900 border-amber-600 hover:bg-amber-500', indigo: 'bg-indigo-500 text-white border-indigo-700 hover:bg-indigo-600' };
+  return <button onClick={onClick} disabled={disabled} className={`group relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all duration-100 border-b-[4px] active:border-b-0 active:translate-y-[4px] ${compact ? 'p-2.5' : 'px-4 py-3'} ${disabled ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed shadow-none' : `${colorStyles[color]} shadow-lg`} `} > {icon} {!compact && <span>{label}</span>} </button>;
 };
-
 interface DropdownProps { icon: React.ReactNode; label: string; children: React.ReactNode; color: 'indigo' | 'emerald'; direction?: 'up' | 'down'; big?: boolean; }
 const DropdownMenu: React.FC<DropdownProps> = ({ icon, label, children, color, direction = 'down', big }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -242,19 +227,8 @@ const DropdownMenu: React.FC<DropdownProps> = ({ icon, label, children, color, d
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     const bgClass = color === 'indigo' ? 'bg-indigo-500 hover:bg-indigo-600 border-indigo-800' : 'bg-emerald-500 hover:bg-emerald-600 border-emerald-800';
-    return (
-        <div className="relative" ref={menuRef}>
-            <button onClick={() => setIsOpen(!isOpen)} className={`flex items-center gap-2 font-bold text-white shadow-lg rounded-2xl transition-all active:scale-95 ${bgClass} ${big ? 'px-8 py-4 text-lg border-b-[6px] active:border-b-0 active:translate-y-[6px]' : 'px-4 py-3 text-sm border-b-[4px] active:border-b-0 active:translate-y-[4px]'} `} > {icon} {label} <ChevronUp size={16} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} ${direction === 'down' ? 'rotate-180' : ''}`} /> </button>
-            {isOpen && <div className={`absolute left-0 ${direction === 'up' ? 'bottom-full mb-3' : 'top-full mt-3'} w-56 max-h-[60vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-2 border-slate-100 p-2 flex flex-col gap-1 animate-in fade-in zoom-in duration-200 z-50`}>{children}</div>}
-        </div>
-    )
+    return <div className="relative" ref={menuRef}><button onClick={() => setIsOpen(!isOpen)} className={`flex items-center gap-2 font-bold text-white shadow-lg rounded-2xl transition-all active:scale-95 ${bgClass} ${big ? 'px-8 py-4 text-lg border-b-[6px] active:border-b-0 active:translate-y-[6px]' : 'px-4 py-3 text-sm border-b-[4px] active:border-b-0 active:translate-y-[4px]'} `} > {icon} {label} <ChevronUp size={16} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} ${direction === 'down' ? 'rotate-180' : ''}`} /> </button>{isOpen && <div className={`absolute left-0 ${direction === 'up' ? 'bottom-full mb-3' : 'top-full mt-3'} w-56 max-h-[60vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-2 border-slate-100 p-2 flex flex-col gap-1 animate-in fade-in zoom-in duration-200 z-50`}>{children}</div>}</div>
 }
-
 const DropdownItem: React.FC<{ onClick: () => void, icon: React.ReactNode, label: string, highlight?: boolean, truncate?: boolean }> = ({ onClick, icon, label, highlight, truncate }) => {
-    return (
-        <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors text-left ${highlight ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'text-slate-600 hover:bg-slate-100'} `} >
-            <div className="shrink-0">{icon}</div>
-            <span className={truncate ? "truncate w-full" : ""}>{label}</span>
-        </button>
-    )
+    return <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-colors text-left ${highlight ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'text-slate-600 hover:bg-slate-100'} `} ><div className="shrink-0">{icon}</div><span className={truncate ? "truncate w-full" : ""}>{label}</span></button>
 }
