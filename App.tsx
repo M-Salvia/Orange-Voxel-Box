@@ -13,7 +13,6 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { LiquidOrangeTimer } from './components/LiquidOrangeTimer';
 import { Generators } from './utils/voxelGenerators';
 import { AppState, VoxelData } from './types';
-import { GoogleGenAI, Type } from "@google/genai";
 
 const FOCUS_DURATION = 2700; // 45 minutes
 
@@ -167,32 +166,25 @@ const App: React.FC = () => {
     setIsGenerating(true);
     setIsPromptModalOpen(false);
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const systemInstruction = language === 'zh' 
-            ? `你是一个3D体素艺术家。请根据提示语 "${prompt}" 生成一个3D模型。我有正好 ${voxelCount} 个橘子。请仅返回包含 {x, y, z} 坐标的 JSON 数组。`
-            : `You are a 3D voxel artist. Generate a model for: "${prompt}". I have exactly ${voxelCount} oranges. Return ONLY a JSON array of {x, y, z} coordinates.`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: systemInstruction,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            x: { type: Type.INTEGER },
-                            y: { type: Type.INTEGER },
-                            z: { type: Type.INTEGER }
-                        },
-                        required: ["x", "y", "z"]
-                    }
-                }
-            }
+        // 使用 Netlify Function 作为代理，而不是直接在前端调用 SDK
+        const response = await fetch('/.netlify/functions/voxel-gen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            voxelCount,
+            language
+          })
         });
-        if (response.text) {
-            const voxelData: VoxelData[] = JSON.parse(response.text.trim()).map((v: any) => ({
+
+        if (!response.ok) {
+          throw new Error('Server returned an error');
+        }
+
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            const voxelData: VoxelData[] = data.map((v: any) => ({
                 x: v.x, y: v.y, z: v.z,
                 color: 0xFF8C00
             }));
@@ -200,8 +192,11 @@ const App: React.FC = () => {
             setCurrentModelData(voxelData);
             engineRef.current?.rebuild(voxelData);
         }
+    } catch (err) {
+      console.error(err);
+      alert(language === 'zh' ? "生成失败，请检查网络或 API 配置。" : "Generation failed, please check network or API config.");
     } finally {
-        setIsGenerating(false);
+      setIsGenerating(false);
     }
   };
 
