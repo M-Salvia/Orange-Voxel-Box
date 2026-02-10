@@ -44,13 +44,15 @@ const App: React.FC = () => {
   // 1. 初始化 Auth 监听和数据拉取
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchUserOranges(session.user);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) fetchUserOranges(currentUser);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchUserOranges(session.user);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) fetchUserOranges(currentUser);
     });
 
     return () => subscription.unsubscribe();
@@ -58,27 +60,26 @@ const App: React.FC = () => {
 
   const fetchUserOranges = async (currentUser: any) => {
     const userId = currentUser.id;
-    // 尝试获取 profile
+    // 明确只查询存在的列
     const { data, error } = await supabase
       .from('profiles')
-      .select('orange_count, username')
+      .select('orange_count')
       .eq('id', userId)
-      .single();
+      .maybeSingle(); // 使用 maybeSingle 避免找不到记录时抛出错误
     
-    if (error && error.code === 'PGRST116') {
-      // 如果没有找到记录，说明是新用户，创建一个
-      const initialUsername = currentUser.user_metadata?.username || currentUser.email?.split('@')[0];
+    if (!data && !error) {
+      // 如果没有找到记录，尝试创建
       const { data: newData, error: insertError } = await supabase
         .from('profiles')
-        .insert([{ id: userId, orange_count: 0, username: initialUsername }])
-        .select()
-        .single();
+        .insert([{ id: userId, orange_count: 0 }])
+        .select('orange_count')
+        .maybeSingle();
       
       if (!insertError && newData) {
         setVoxelCount(newData.orange_count);
         updateEngineModel(newData.orange_count);
       }
-    } else if (data && !error) {
+    } else if (data) {
       setVoxelCount(data.orange_count);
       updateEngineModel(data.orange_count);
     }
@@ -130,11 +131,14 @@ const App: React.FC = () => {
     setVoxelCount(newCount);
     setAppState(AppState.STABLE);
     
-    // 如果用户已登录，保存到数据库
     if (user) {
+      // 更新时只操作存在的列
       await supabase
         .from('profiles')
-        .update({ orange_count: newCount, updated_at: new Date() })
+        .update({ 
+          orange_count: newCount, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', user.id);
     }
 
@@ -147,7 +151,6 @@ const App: React.FC = () => {
     }
   };
 
-  // 其余处理函数...
   const handleDismantle = () => engineRef.current?.dismantle();
   const handleStartTimer = () => { setAppState(AppState.TIMING); setTimeLeft(FOCUS_DURATION); setIsTimerPaused(false); };
   const handleQuitTimer = () => setAppState(AppState.STABLE);
