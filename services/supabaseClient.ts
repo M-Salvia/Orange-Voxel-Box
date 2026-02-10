@@ -2,48 +2,18 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 /**
- * 健壮的环境变量解析器。
- * 搜索多个可能的存储位置和命名约定，以确保在各种部署环境下都能找到凭据。
+ * 针对“无构建步骤”部署的直接配置方案。
+ * 直接使用你提供的项目 URL 和最新的 Anon Key。
  */
-const getEnv = (key: string): string => {
-  // 定义可能的键名变体：原始键、去掉 VITE_ 前缀的键、加上 VITE_ 前缀的键
-  const variants = [key, key.replace('VITE_', ''), `VITE_${key}`];
-  
-  try {
-    // 1. 检查 Vite/构建工具的元数据 (import.meta.env)
-    const meta = import.meta as any;
-    if (typeof meta !== 'undefined' && meta.env) {
-      for (const v of variants) {
-        if (meta.env[v]) return meta.env[v];
-      }
-    }
 
-    // 2. 检查 Node/Netlify 的进程对象 (process.env)
-    // 注意：在没有构建步骤的纯静态前端中，process 可能未定义
-    if (typeof process !== 'undefined' && process.env) {
-      for (const v of variants) {
-        if ((process.env as any)[v]) return (process.env as any)[v];
-      }
-    }
+// 1. 你的项目 URL
+const SUPABASE_URL = 'https://yhtmfggneyufebqzmahx.supabase.co';
 
-    // 3. 检查浏览器全局对象 (window / globalThis)
-    // 某些沙箱环境或预览器会将环境变量注入到全局
-    const globalContext = (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : {})) as any;
-    for (const v of variants) {
-      if (globalContext[v]) return globalContext[v];
-    }
-
-    return '';
-  } catch {
-    return '';
-  }
-};
-
-const supabaseUrl = getEnv('https://yhtmfggneyufebqzmahx.supabase.co');
-const supabaseAnonKey = getEnv('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlodG1mZ2duZXl1ZmVicXptYWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDgyMDQsImV4cCI6MjA4NjA4NDIwNH0.IMC4DkjI_pimHjbuUk2Vera9e9ttWVZEnvJib4cCHyY');
+// 2. 你的最新 Anon Public Key (由用户在对话中提供)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlodG1mZ2duZXl1ZmVicXptYWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDgyMDQsImV4cCI6MjA4NjA4NDIwNH0.IMC4DkjI_pimHjbuUk2Vera9e9ttWVZEnvJib4cCHyY';
 
 /**
- * 当配置缺失时返回的模拟客户端，提供明确的错误反馈。
+ * 兜底模拟对象：仅在字符串为空时防崩溃使用
  */
 const mockSupabase = {
   auth: {
@@ -53,18 +23,19 @@ const mockSupabase = {
     }),
     signInWithPassword: async () => ({ 
       data: {}, 
-      error: { message: '找不到 Supabase 配置。请确保在 Netlify 后台或本地环境设置了 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY。' } 
+      error: { message: 'Supabase 配置无效。' } 
     }),
     signUp: async () => ({ 
       data: {}, 
-      error: { message: '注册失败：Supabase 未配置。如果你已在 Netlify 设置变量，请尝试添加 VITE_ 前缀并重新部署。' } 
+      error: { message: '注册失败：Supabase 配置无效。' } 
     }),
     signOut: async () => ({ error: null }),
   },
   from: () => ({
     select: () => ({
       eq: () => ({
-        single: async () => ({ data: null, error: { message: 'Supabase not configured' } })
+        single: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+        order: () => ({ limit: async () => ({ data: [], error: null }) })
       }),
       order: () => ({
         limit: async () => ({ data: [], error: null })
@@ -74,8 +45,7 @@ const mockSupabase = {
       eq: () => ({
         eq: async () => ({ data: null, error: null }),
         single: async () => ({ data: null, error: null })
-      }),
-      eq_async: async () => ({ data: null, error: null })
+      })
     }),
     insert: () => ({
       select: () => ({
@@ -85,12 +55,13 @@ const mockSupabase = {
   })
 } as any;
 
-// 在控制台输出调试信息
-if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
-  console.warn("Supabase 配置提示: 未检测到有效的 VITE_SUPABASE_URL。应用将运行在本地演示模式。");
-}
+// 检查字符串是否存在
+const hasConfig = SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.includes('supabase.co');
 
-// 只有在获得有效的 URL 时才初始化真实客户端
-export const supabase = (supabaseUrl && supabaseUrl.startsWith('http')) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+export const supabase = hasConfig 
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
   : mockSupabase;
+
+if (!hasConfig) {
+  console.error('Supabase URL 或 Key 缺失。请确保 services/supabaseClient.ts 中的字符串已正确填写。');
+}
