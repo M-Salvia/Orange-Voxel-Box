@@ -60,28 +60,39 @@ const App: React.FC = () => {
 
   const fetchUserOranges = async (currentUser: any) => {
     const userId = currentUser.id;
-    // 明确只查询存在的列
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('orange_count')
-      .eq('id', userId)
-      .maybeSingle(); // 使用 maybeSingle 避免找不到记录时抛出错误
-    
-    if (!data && !error) {
-      // 如果没有找到记录，尝试创建
-      const { data: newData, error: insertError } = await supabase
+    try {
+      // 查询包含所有字段，便于监控
+      const { data, error } = await supabase
         .from('profiles')
-        .insert([{ id: userId, orange_count: 0 }])
-        .select('orange_count')
+        .select('orange_count, username, email')
+        .eq('id', userId)
         .maybeSingle();
       
-      if (!insertError && newData) {
-        setVoxelCount(newData.orange_count);
-        updateEngineModel(newData.orange_count);
+      if (error) throw error;
+
+      if (!data) {
+        // 如果没有找到记录（老用户或触发器未完成），手动创建包含完整信息的档案
+        const { data: newData, error: insertError } = await supabase
+          .from('profiles')
+          .insert([{ 
+            id: userId, 
+            orange_count: 0, 
+            username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0],
+            email: currentUser.email
+          }])
+          .select('orange_count')
+          .maybeSingle();
+        
+        if (!insertError && newData) {
+          setVoxelCount(newData.orange_count);
+          updateEngineModel(newData.orange_count);
+        }
+      } else {
+        setVoxelCount(data.orange_count);
+        updateEngineModel(data.orange_count);
       }
-    } else if (data) {
-      setVoxelCount(data.orange_count);
-      updateEngineModel(data.orange_count);
+    } catch (err) {
+      console.warn("Profile fetch issue:", err);
     }
   };
 
@@ -125,19 +136,21 @@ const App: React.FC = () => {
     if (appState === AppState.TIMING && timeLeft === 0) setAppState(AppState.COLLECTING);
   }, [timeLeft, appState]);
 
-  // 4. 收获逻辑：更新数据库
+  // 4. 收获逻辑
   const handleCollect = async () => {
     const newCount = voxelCount + 1;
     setVoxelCount(newCount);
     setAppState(AppState.STABLE);
     
     if (user) {
-      // 更新时只操作存在的列
+      // 更新时同时刷新用户名和邮箱，确保数据最新，方便监控
       await supabase
         .from('profiles')
         .update({ 
           orange_count: newCount, 
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString(),
+          username: user.user_metadata?.username || user.email?.split('@')[0],
+          email: user.email
         })
         .eq('id', user.id);
     }
@@ -151,6 +164,7 @@ const App: React.FC = () => {
     }
   };
 
+  // ... 其余 handler 保持不变
   const handleDismantle = () => engineRef.current?.dismantle();
   const handleStartTimer = () => { setAppState(AppState.TIMING); setTimeLeft(FOCUS_DURATION); setIsTimerPaused(false); };
   const handleQuitTimer = () => setAppState(AppState.STABLE);
